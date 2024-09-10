@@ -4,3 +4,4 @@ build/
 .gradle/
 **/.env
 /src/main/resources/spells.csv
+.vscode
