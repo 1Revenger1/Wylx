@@ -2,6 +2,7 @@ package com.wylxbot.wylx.Commands.BotUtil;
 
 import com.wylxbot.wylx.Core.Events.Commands.CommandContext;
 import com.wylxbot.wylx.Core.Events.Commands.ServerCommand;
+import com.wylxbot.wylx.Core.Util.EnvUtils;
 import com.wylxbot.wylx.Core.Util.ProgressBar;
 import com.wylxbot.wylx.Core.Util.WylxStats;
 import com.wylxbot.wylx.Database.DbElements.DiscordGlobal;
@@ -71,11 +72,15 @@ public class StatusCommand extends ServerCommand {
         embed.setTitle("Wylx Status");
 
         // Build elements for system section
-        String systemName = "";
-        try {
-            systemName = String.format("System: %s", InetAddress.getLocalHost().getHostName());
-        } catch (Exception e) {
-            e.printStackTrace();
+        String systemName = "System: ";
+        if (mIsDocker) {
+            systemName += "Docker";
+        } else {
+            try {
+                systemName += InetAddress.getLocalHost().getHostName();
+            } catch (UnknownHostException e) {
+                systemName += "Unknown";
+            }
         }
 
         Runtime rt = Runtime.getRuntime();
