@@ -11,14 +11,20 @@ import com.wylxbot.wylx.Wylx;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Properties;
+import java.util.stream.Stream;
 
 
 public class StatusCommand extends ServerCommand {
-    private final String commitID = getCommitID();
+    private final String mCommitID;
+    private final String mBuildDate;
+    private final boolean mIsDocker = EnvUtils.isRunningInsideDocker();
 
     private static final long BYTES_PER_MEGABYTE = 1024 * 1024;
     private static final long MILLI_PER_SECOND = 1000;
@@ -28,6 +34,15 @@ public class StatusCommand extends ServerCommand {
 
     public StatusCommand() {
         super("status", CommandPermission.EVERYONE, "Provides information on the host machine of the bot", "system", "stats");
+        Properties prop = new Properties();
+        try (InputStream inputStream = StatusCommand.class.getResourceAsStream("/version.properties")) {
+            prop.load(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace(System.out);
+            System.exit(1);
+        }
+        mBuildDate = prop.getProperty("build-date");
+        mCommitID = prop.getProperty("version");
     }
 
     private String getCommitID() {
@@ -91,7 +106,8 @@ public class StatusCommand extends ServerCommand {
 
         String systemBuilder =
                 String.format("OS: %s\n", System.getProperty("os.name")) +
-                String.format("Commit: %s\n", commitID) +
+                String.format("Commit: %s\n", mCommitID) +
+                String.format("Build Date: %s\n", mBuildDate) +
                 String.format("Threads: %d\n", rt.availableProcessors()) +
                 String.format("Bot Uptime: %d Days, %d Hours, and %d minutes\n",
                          milliToDays(uptime), milliToHours(uptime), milliToMinutes(uptime)) +

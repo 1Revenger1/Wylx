@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'org.wylx'
-version '1.0-SNAPSHOT'
+version = System.getenv("GIT_COMMIT") ?: "git describe --dirty --always --exclude '*'".execute().text.trim()
 
 repositories {
     mavenCentral()
@@ -45,4 +45,20 @@ tasks.jar {
 
 tasks.distZip {
     archiveFileName.set("${project.name}.zip")
+}
+
+// Create version.properties with git hash
+task createProperties(dependsOn: processResources) {
+  doLast {
+    new File("$buildDir/resources/main/version.properties").withWriter { w ->
+        Properties p = new Properties()
+        p['version'] = version.toString()
+        p['build-date'] = new Date().format("EEE MMM dd HH':'mm':'ss zzz yyyy")
+        p.store w, null
+    }
+  }
+}
+
+classes {
+    dependsOn createProperties
 }
