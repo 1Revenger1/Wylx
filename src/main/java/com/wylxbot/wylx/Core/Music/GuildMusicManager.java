@@ -1,9 +1,8 @@
 package com.wylxbot.wylx.Core.Music;
 
 import com.wylxbot.wylx.Core.Util.Helper;
+import com.wylxbot.wylx.Database.Pojos.DBServer;
 import com.wylxbot.wylx.Wylx;
-import com.wylxbot.wylx.Database.DbElements.DiscordServer;
-import com.wylxbot.wylx.Database.DbElements.ServerIdentifiers;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
@@ -40,8 +39,8 @@ public class GuildMusicManager extends AudioEventAdapter {
         player.addListener(this);
 
         // Use last saved volume
-        DiscordServer serverDB = wylx.getDb().getServer("" + guildID);
-        player.setVolume(serverDB.getSetting(ServerIdentifiers.MusicVolume));
+        DBServer serverEntry = wylx.getDb().getServer(guildID);
+        player.setVolume(serverEntry.musicVolume);
 
         AudioManager audioManager = wylx.getGuildAudioManager(guildID);
         audioManager.setSendingHandler(new AudioPlayerSendHandler(player));

@@ -14,7 +14,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.managers.AudioManager;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 
-import javax.security.auth.login.LoginException;
 import java.util.*;
 
 public class Wylx {
@@ -31,6 +30,8 @@ public class Wylx {
     private DatabaseManager db;
     private int activityIndex = 0;
     private final WylxEnvConfig wylxConfig;
+    private final MessageProcessing msgProc;
+    private final Thread shutdownThread = new Thread(this::shutdown, "Shutdown Thread");
 
     public static Wylx getInstance() {
         return INSTANCE;
@@ -53,13 +54,15 @@ public class Wylx {
         }
 
         db = new DatabaseManager(wylxConfig);
+        msgProc = new MessageProcessing(db);
 
         jda = JDABuilder.createDefault(token)
                 .enableIntents(GatewayIntent.MESSAGE_CONTENT)
-                .addEventListeners(new MessageProcessing(),
+                .addEventListeners(
+                        msgProc,
                         new VoiceChannelProcessing(),
-                        new ReactionProcessing())
-                .build();
+                        new ReactionProcessing()
+                ).build();
 
         Timer activityTimer = new Timer();
         activityTimer.scheduleAtFixedRate(new TimerTask() {
@@ -68,6 +71,8 @@ public class Wylx {
                 setActivity();
             }
         }, 0, ACTIVITY_PERIOD);
+
+        Runtime.getRuntime().addShutdownHook(shutdownThread);
     }
 
     private void setActivity() {
@@ -122,5 +127,9 @@ public class Wylx {
 
     public JDA getJDA(){
         return jda;
+    }
+
+    private void shutdown() {
+        msgProc.close();
     }
 }

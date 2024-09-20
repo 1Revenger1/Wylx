@@ -4,7 +4,6 @@ import com.wylxbot.wylx.Core.Events.Commands.CommandContext;
 import com.wylxbot.wylx.Core.Events.Commands.ServerCommand;
 import com.wylxbot.wylx.Commands.Roles.RolesUtil.RoleMenu;
 import com.wylxbot.wylx.Wylx;
-import com.wylxbot.wylx.Database.DbElements.RoleMenuIdentifiers;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -63,8 +62,7 @@ public class NewRoleMenuCommand extends ServerCommand {
 
         try {
             RoleMenu menu = new RoleMenu(newMessage.getId(), newChannel.getId(), event.getGuild().getId());
-            Wylx.getInstance().getDb().getRoleMenu(newMessage.getId())
-                    .setSetting(RoleMenuIdentifiers.ROLE_MENU, menu);
+            Wylx.getInstance().getDb().setRoleMenu(newMessage.getId(), menu.getDBEntry());
         } catch (IllegalArgumentException | ErrorResponseException e) {
             // This really shouldn't happen, as we know channel + message exist
             logger.error("Failed to create new Role Menu");

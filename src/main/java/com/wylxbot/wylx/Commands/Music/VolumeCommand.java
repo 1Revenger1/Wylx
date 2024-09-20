@@ -3,7 +3,8 @@ package com.wylxbot.wylx.Commands.Music;
 import com.wylxbot.wylx.Core.Events.Commands.CommandContext;
 import com.wylxbot.wylx.Core.Events.Commands.ServerCommand;
 import com.wylxbot.wylx.Core.Music.MusicUtils;
-import com.wylxbot.wylx.Database.DbElements.ServerIdentifiers;
+import com.wylxbot.wylx.Database.DatabaseManager;
+import com.wylxbot.wylx.Wylx;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 public class VolumeCommand extends ServerCommand {
@@ -42,7 +43,8 @@ public class VolumeCommand extends ServerCommand {
             return;
         }
 
-        ctx.db().setSetting(ServerIdentifiers.MusicVolume, number);
+        ctx.db().musicVolume = number;
+        Wylx.getInstance().getDb().setServer(ctx.guildID(), ctx.db());
         ctx.musicManager().setVolume(number);
     }
 }

@@ -1,12 +1,12 @@
 package com.wylxbot.wylx.Core.Events;
 
 import com.wylxbot.wylx.Core.Processing.MessageProcessing;
+import com.wylxbot.wylx.Database.Pojos.DBServer;
 import com.wylxbot.wylx.Wylx;
 import com.wylxbot.wylx.Database.DatabaseManager;
-import com.wylxbot.wylx.Database.DbElements.DiscordServer;
-import com.wylxbot.wylx.Database.DbElements.ServerIdentifiers;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class ServerEventManager {
 
@@ -16,54 +16,46 @@ public class ServerEventManager {
 	private static final DatabaseManager db = Wylx.getInstance().getDb();
 
 	// Static getting of events manager for a server
-	public static ServerEventManager getServerEventManager(String id){
-		DiscordServer servedDB = db.getServer(id);
+	public static ServerEventManager getServerEventManager(String id) {
+		DBServer servedDB = db.getServer(id);
 		// Try to find cached manager for the server
-		ServerEventManager manager = servedDB.getSetting(ServerIdentifiers.Modules);
-		manager.serverDB = servedDB;
-
-		return manager;
+		return new ServerEventManager(id, servedDB.enabledModules, servedDB.exceptions);
 	}
 
-	// DiscordServer this manager belongs to
-	private DiscordServer serverDB = null;
-	// Map used for making comparisons as events are being run
-	private final HashMap<String, Boolean> masterEventMap = new HashMap<>();
 	// Map of enabled and disabled modules
-	private final HashMap<String, Boolean> moduleMap = new HashMap<>();
+	private final Map<String, Boolean> moduleMap;
 	// Map of events that are exceptions to their modules
-	private final HashMap<String, Boolean> eventExceptionMap = new HashMap<>();
+	private final Map<String, Boolean> eventExceptionMap;
+	private final String id;
 
-	public ServerEventManager() {
-		fillDefaults();
+	public ServerEventManager(String id, Map<String, Boolean> moduleMap, Map<String, Boolean> exceptions) {
+		this.moduleMap = moduleMap;
+		this.eventExceptionMap = exceptions;
+		this.id = id;
 	}
 
 	public boolean checkEvent(Event event){
-		return checkEvent(event.getClass().getSimpleName().toLowerCase());
+		String eventName = event.getKeyword().toLowerCase();
+		Boolean except = eventExceptionMap.get(eventName);
+		if (except != null) return except;
+
+		String moduleName = MessageProcessing.commandToModuleMap.get(eventName);
+		Boolean moduleEnabled = moduleMap.get(moduleName);
+		if (moduleEnabled != null) return moduleEnabled;
+		return true;
 	}
 
-	public boolean checkEvent(String eventName){
-		if(masterEventMap.size() == 0) fillDefaults();
-		return masterEventMap.get(eventName);
-	}
-
-	public Boolean checkPackage(EventPackage eventPackage) {
-		return checkPackage(eventPackage.getClass().getSimpleName().toLowerCase());
-	}
-
-	public Boolean checkPackage(String packageName){
-		return moduleMap.get(packageName);
+	public boolean checkPackage(EventPackage eventPackage) {
+		Boolean moduleEnabled = moduleMap.get(eventPackage.getName().toLowerCase());
+		if (moduleEnabled != null) return moduleEnabled;
+		return true;
 	}
 
 	public void setModule(String moduleName, boolean value) throws IllegalArgumentException{
-		setModule(moduleName, value, true);
-	}
-
-	public void setModule(String moduleName, boolean value, boolean write) throws IllegalArgumentException{
 		// find the actual class for the module
 		EventPackage module = null;
 		for(EventPackage eventPackage : eventPackages){
-			if(eventPackage.getClass().getSimpleName().toLowerCase().equals(moduleName))
+			if(eventPackage.getName().toLowerCase().equals(moduleName))
 				module = eventPackage;
 		}
 
@@ -78,63 +70,35 @@ public class ServerEventManager {
 		moduleMap.put(moduleName, value);
 
 		for(Event event : module.getEvents()){
-			String eventName = event.getClass().getSimpleName().toLowerCase();
-
-			// Write changes to the map so the change to enabled status is reflected
-			masterEventMap.put(eventName, value);
+			String eventName = event.getKeyword().toLowerCase();
 
 			// If there was an exception for this event remove that exception
 			eventExceptionMap.remove(eventName);
 		}
 
 		// Write the new info to mongodb
-		if(write) serverDB.setSetting(ServerIdentifiers.Modules, this);
+		DBServer server = db.getServer(id);
+		server.enabledModules = moduleMap;
+		server.exceptions = eventExceptionMap;
+		db.setServer(id, server);
 	}
 
 	public void setEvent(String eventName, boolean value) throws IllegalArgumentException{
-		setEvent(eventName, value, true);
-	}
-
-	public void setEvent(String eventName, boolean value, boolean write) throws IllegalArgumentException{
 		// If the event doesn't exist we can set anything with it
-		if(!masterEventMap.containsKey(eventName)) throw new IllegalArgumentException("Specified event: `" + eventName +  "` does not exist");
+		if(!MessageProcessing.commandToModuleMap.containsKey(eventName))
+			throw new IllegalArgumentException("Specified event: `" + eventName +  "` does not exist");
 
 		// If the values are already the same do nothing
-		Boolean currentValue = masterEventMap.get(eventName);
+		Boolean currentValue = eventExceptionMap.get(eventName);
 		if(currentValue != null && currentValue == value) return;
 
-		// Write changes to the master map
-		masterEventMap.replace(eventName, value);
-
-		// If the exception already exists, an exception is no longer needed
-		// Otherwise add an exception
-		if(eventExceptionMap.containsKey(eventName)){
-			eventExceptionMap.remove(eventName);
-		} else {
-			eventExceptionMap.put(eventName, value);
-		}
+		// Write changes to the exceptions
+		eventExceptionMap.put(eventName, value);
 
 		// Write changes to mongodb
-		if(write) serverDB.setSetting(ServerIdentifiers.Modules, this);
-	}
-
-	private void fillDefaults(){
-		// Enable every module/command
-		for(EventPackage module : eventPackages){
-			String moduleName = module.getClass().getSimpleName().toLowerCase();
-			setModule(moduleName, true, false);
-		}
-	}
-
-	public HashMap<String, Boolean> getMasterEventMap() {
-		return masterEventMap;
-	}
-
-	public HashMap<String, Boolean> getModuleMap() {
-		return moduleMap;
-	}
-
-	public HashMap<String, Boolean> getEventExceptionMap() {
-		return eventExceptionMap;
+		DBServer server = db.getServer(id);
+		server.enabledModules = moduleMap;
+		server.exceptions = eventExceptionMap;
+		db.setServer(id, server);
 	}
 }

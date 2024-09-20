@@ -1,6 +1,5 @@
 package com.wylxbot.wylx.Commands.Roles.RolesUtil;
 
-import com.wylxbot.wylx.Database.DbElements.RoleMenuIdentifiers;
 import com.wylxbot.wylx.Wylx;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
@@ -103,9 +102,9 @@ public class DMListener extends ListenerAdapter {
             default -> { return; }
         }
 
+
         // Save changes
-        Wylx.getInstance().getDb().getRoleMenu(menu.getMessageID())
-                .setSetting(RoleMenuIdentifiers.ROLE_MENU, menu);
+        Wylx.getInstance().getDb().setRoleMenu(menu.getMessageID(), menu.getDBEntry());
 
         // Display new menu
         try {

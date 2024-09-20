@@ -1,45 +1,28 @@
 package com.wylxbot.wylx.Core.Util;
 
-import com.wylxbot.wylx.Database.DbElements.DiscordGlobal;
-import com.wylxbot.wylx.Database.DbElements.GlobalIdentifiers;
+import com.wylxbot.wylx.Database.DatabaseManager;
+import com.wylxbot.wylx.Database.Pojos.DBCommandStats;
 import com.wylxbot.wylx.Wylx;
 
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class WylxStats {
-    private long commandsProcessed;
-    private double averageCommandTime;
-
-    private long silentEventsProcessed;
-    private double averageSilentEventTime;
-
-    private long noOpsProcessed;
-    private double averageNoOpTime;
+    DBCommandStats stats;
 
     private final Timer writeTimer = new Timer("WylxStatsWriteTimer");
 
     private static final long TEN_MINUTES_IN_MS = 600000;
 
-    public WylxStats(long commandsProcessed, double averageCommandTime,
-                     long silentEventsProcessed, double averageSilentEventTime,
-                     long noOpsProcessed, double averageNoOpTime) {
-        this.commandsProcessed = commandsProcessed;
-        this.averageCommandTime = averageCommandTime;
-        this.silentEventsProcessed = silentEventsProcessed;
-        this.averageSilentEventTime = averageSilentEventTime;
-        this.noOpsProcessed = noOpsProcessed;
-        this.averageNoOpTime = averageNoOpTime;
+    public WylxStats(DBCommandStats stats) {
+        this.stats = stats;
 
         // Schedule updating of the db every 10 minutes
         writeTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                DiscordGlobal globalDB = Wylx.getInstance().getDb().getGlobal();
-
-                WylxStats stats = globalDB.getSetting(GlobalIdentifiers.BotStats);
-
-                globalDB.setSetting(GlobalIdentifiers.BotStats, stats);
+                DatabaseManager db = Wylx.getInstance().getDb();
+                db.setCmdStats(stats);
             }
         }, 0, TEN_MINUTES_IN_MS);
     }
@@ -48,21 +31,33 @@ public class WylxStats {
         // time from this run
         long runTime = System.currentTimeMillis() - startTime;
         // Calc new avg
-        averageCommandTime = runningAverageCalculation(averageCommandTime, commandsProcessed++, runTime);
+        stats.averageCommandTime = runningAverageCalculation(
+                stats.averageCommandTime,
+                stats.commandsProcessed++,
+                runTime
+        );
     }
 
     public void updateAverageNoOp(long startTime) {
         // time from this run
         long runTime = System.currentTimeMillis() - startTime;
         // Calc new avg
-        averageNoOpTime = runningAverageCalculation(averageNoOpTime, noOpsProcessed++, runTime);
+        stats.averageNoOpTime = runningAverageCalculation(
+                stats.averageNoOpTime,
+                stats.noOpsProcessed++,
+                runTime
+        );
     }
 
     public void updateAverageSilentEvent(long startTime) {
         // time from this run
         long runTime = System.currentTimeMillis() - startTime;
         // Calc new avg
-        averageSilentEventTime = runningAverageCalculation(averageSilentEventTime, silentEventsProcessed++, runTime);
+        stats.averageSilentEventTime = runningAverageCalculation(
+                stats.averageSilentEventTime,
+                stats.silentEventsProcessed++,
+                runTime
+        );
     }
 
     private double runningAverageCalculation(double oldAvg, long oldCount, long newDataPoint) {
@@ -72,26 +67,32 @@ public class WylxStats {
     }
 
     public long getCommandsProcessed() {
-        return commandsProcessed;
+        return stats.commandsProcessed;
     }
 
     public double getAverageCommandTime() {
-        return averageCommandTime;
+        return stats.averageCommandTime;
     }
 
     public long getSilentEventsProcessed() {
-        return silentEventsProcessed;
+        return stats.silentEventsProcessed;
     }
 
     public double getAverageSilentEventTime() {
-        return averageSilentEventTime;
+        return stats.averageSilentEventTime;
     }
 
     public long getNoOpsProcessed() {
-        return noOpsProcessed;
+        return stats.noOpsProcessed;
     }
 
     public double getAverageNoOpTime() {
-        return averageNoOpTime;
+        return stats.averageNoOpTime;
+    }
+
+    public void close() {
+        writeTimer.cancel();
+        DatabaseManager db = Wylx.getInstance().getDb();
+        db.setCmdStats(stats);
     }
 }

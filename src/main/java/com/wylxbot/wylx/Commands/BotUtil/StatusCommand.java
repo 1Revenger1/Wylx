@@ -4,8 +4,6 @@ import com.wylxbot.wylx.Core.Events.Commands.CommandContext;
 import com.wylxbot.wylx.Core.Events.Commands.ServerCommand;
 import com.wylxbot.wylx.Core.Util.ProgressBar;
 import com.wylxbot.wylx.Core.Util.WylxStats;
-import com.wylxbot.wylx.Database.DbElements.DiscordGlobal;
-import com.wylxbot.wylx.Database.DbElements.GlobalIdentifiers;
 import com.wylxbot.wylx.Wylx;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -65,7 +63,6 @@ public class StatusCommand extends ServerCommand {
     @Override
     public void runCommand(CommandContext ctx) {
         MessageReceivedEvent event = ctx.event();
-        DiscordGlobal globalDB = Wylx.getInstance().getDb().getGlobal();
         EmbedBuilder embed = new EmbedBuilder();
         embed.setColor(event.getGuild().getSelfMember().getColor());
         embed.setTitle("Wylx Status");
@@ -96,7 +93,7 @@ public class StatusCommand extends ServerCommand {
         embed.addField(systemName, systemBuilder, false);
 
         // Build stats section
-        WylxStats wylxStats = globalDB.getSetting(GlobalIdentifiers.BotStats);
+        WylxStats wylxStats = ctx.stats();
         embed.addField("Wylx Stats",
                 String.format("""
                         | \u2005\u2005\u2005\u2005\u2005\u2005\u200A\u200ACommands Processed:\u2005\u2005\u2005\u2005\t%d commands

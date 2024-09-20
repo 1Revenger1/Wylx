@@ -1,44 +1,59 @@
 package com.wylxbot.wylx.Database;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
 import com.wylxbot.wylx.Core.WylxEnvConfig;
-import com.wylxbot.wylx.Database.DbElements.DiscordGlobal;
-import com.wylxbot.wylx.Database.DbElements.DiscordRoleMenu;
-import com.wylxbot.wylx.Database.DbElements.DiscordServer;
-import com.wylxbot.wylx.Database.DbElements.DiscordUser;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.wylxbot.wylx.Database.Pojos.*;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
+
+import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static com.mongodb.client.model.Filters.eq;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 public class DatabaseManager {
 
-    private final ConnectionString connectionString;
+    private static final String POJOS_PACKAGE = "com.wylxbot.wylx.Database.Pojos";
+
     private final MongoClient client;
-    private final HashMap<String, DiscordServer> serverCache = new HashMap<>();
-    private final HashMap<String, DiscordUser> userCache = new HashMap<>();
-    private final DiscordGlobal globalDB;
-    private final HashMap<String, DiscordRoleMenu> roleMenuCache = new HashMap<>();
+    private final DatabaseCollection<DBRoleMenu> roleMenuCollection;
+    private final DatabaseCollection<DBServer> serversCollection;
+    private final DatabaseCollection<DBUser> usersCollection;
+    private final MongoCollection<DBCommandStats> statsCollection;
 
     public DatabaseManager(WylxEnvConfig config) {
-        connectionString = new ConnectionString(config.dbURL);
-        client = getMongoClient();
-        globalDB = new DiscordGlobal(client);
-    }
-
-    private MongoClient getMongoClient() {
-        MongoClientSettings clientSettings = MongoClientSettings.builder()
-                .applyConnectionString(connectionString)
+        ConnectionString connStr = new ConnectionString(config.dbURL);
+        client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(connStr)
                 .applicationName("Wylx")
                 .applyToConnectionPoolSettings(
-                        builder -> builder.maxWaitTime(1000, TimeUnit.MILLISECONDS))
-                .build();
-        return MongoClients.create(clientSettings);
+                        builder -> builder.maxWaitTime(1000, TimeUnit.MILLISECONDS)
+                )
+                .build());
+
+        // Combine default codec with our POJOs to represent data objects
+        CodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(POJOS_PACKAGE).build();
+        CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));
+        MongoDatabase database = client.getDatabase("Wylx").withCodecRegistry(pojoCodecRegistry);
+
+        roleMenuCollection = new DatabaseCollection<>(() -> null, database, "Role Menus", DBRoleMenu.class);
+        serversCollection = new DatabaseCollection<>(DBServer::new, database, "Servers", DBServer.class);
+        usersCollection = new DatabaseCollection<>(DBUser::new, database, "Users", DBUser.class);
+        statsCollection = database.getCollection("Stats", DBCommandStats.class);
     }
 
     public void readCluster() {
@@ -57,33 +72,45 @@ public class DatabaseManager {
         System.out.println(" --- END OF EXISTING DATABASES ---");
     }
 
-    public ArrayList<DiscordServer> getExistingServers() {
-        ArrayList<DiscordServer> servers = new ArrayList<>();
-        client.listDatabaseNames().forEach(name -> servers.add(new DiscordServer(client, name)));
-        return servers;
+    public DBServer getServer(String serverId) {
+        return serversCollection.getEntryOrDefault(serverId);
     }
 
-    public DiscordServer getServer(String serverId) {
-        if(!serverCache.containsKey(serverId))
-            serverCache.put(serverId, new DiscordServer(client, serverId));
-
-        return serverCache.get(serverId);
+    public void setServer(String serverId, DBServer replace) {
+        serversCollection.setEntry(serverId, replace);
     }
 
-    public DiscordUser getUser(String userID) {
-        if(!userCache.containsKey(userID))
-            userCache.put(userID, new DiscordUser(client, userID));
-
-        return userCache.get(userID);
+    public DBUser getUser(String userID) {
+        return usersCollection.getEntryOrDefault(userID);
     }
 
-    public DiscordRoleMenu getRoleMenu(String messageID) {
-        if(!roleMenuCache.containsKey(messageID))
-            roleMenuCache.put(messageID, new DiscordRoleMenu(client, messageID));
-        return roleMenuCache.get(messageID);
+    public void setUser(String userID, DBUser replace) {
+        usersCollection.setEntry(userID, replace);
     }
 
-    public DiscordGlobal getGlobal() {
-        return globalDB;
+    public DBRoleMenu getRoleMenu(String messageID) {
+        return roleMenuCollection.getEntryOrNull(messageID);
+    }
+
+    public void setRoleMenu(String messageID, DBRoleMenu replace) {
+        roleMenuCollection.setEntry(messageID, replace);
+    }
+
+    public DBCommandStats getCmdStats() {
+        var iter = statsCollection.find(eq("_id", DBCommandStats.KEY_ID));
+        DBCommandStats stats = iter.first();
+        if (stats == null) {
+            stats = new DBCommandStats();
+            statsCollection.insertOne(stats);
+        }
+
+        return stats;
+    }
+
+    public void setCmdStats(DBCommandStats stats) {
+        statsCollection.replaceOne(
+                eq("_id", DBCommandStats.KEY_ID),
+                stats,
+                new ReplaceOptions().upsert(true));
     }
 }

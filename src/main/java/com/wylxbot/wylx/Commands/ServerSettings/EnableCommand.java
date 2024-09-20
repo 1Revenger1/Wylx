@@ -27,7 +27,7 @@ public class EnableCommand extends ServerCommand {
 		String eventName;
 
 		try{
-			eventName = MessageProcessing.eventMap.get(ctx.args()[1].toLowerCase()).getClass().getSimpleName().toLowerCase(Locale.ROOT);;
+			eventName = MessageProcessing.eventMap.get(ctx.args()[1].toLowerCase()).getKeyword().toLowerCase(Locale.ROOT);;
 			boolean value = Boolean.parseBoolean(ctx.args()[2]);
 			eventManager.setEvent(eventName, value);
 		} catch (IllegalArgumentException e){

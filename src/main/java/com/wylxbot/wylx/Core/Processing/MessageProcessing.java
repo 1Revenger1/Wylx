@@ -17,13 +17,10 @@ import com.wylxbot.wylx.Core.Events.ServerEventManager;
 import com.wylxbot.wylx.Core.Events.SilentEvents.SilentEvent;
 import com.wylxbot.wylx.Core.Music.WylxPlayerManager;
 import com.wylxbot.wylx.Core.Util.WylxStats;
-import com.wylxbot.wylx.Database.DbElements.DiscordGlobal;
-import com.wylxbot.wylx.Database.DbElements.GlobalIdentifiers;
+import com.wylxbot.wylx.Database.Pojos.DBServer;
 import com.wylxbot.wylx.Wylx;
 import com.wylxbot.wylx.Core.WylxEnvConfig;
 import com.wylxbot.wylx.Database.DatabaseManager;
-import com.wylxbot.wylx.Database.DbElements.DiscordServer;
-import com.wylxbot.wylx.Database.DbElements.ServerIdentifiers;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -41,6 +38,7 @@ public class MessageProcessing extends ListenerAdapter {
     private static final WylxPlayerManager musicPlayerManager = WylxPlayerManager.getInstance();
     private static final Logger logger = LoggerFactory.getLogger(MessageProcessing.class);
     public static final HashMap<String, ServerCommand> commandMap = new HashMap<>();
+    public static final HashMap<String, String> commandToModuleMap = new HashMap<>();
     public static final ArrayList<SilentEvent> silentEvents = new ArrayList<>();
     public static final HashMap<String, Event> eventMap = new HashMap<>();
     public static final EventPackage[] eventPackages = {
@@ -59,6 +57,7 @@ public class MessageProcessing extends ListenerAdapter {
         for(EventPackage eventPackage : eventPackages){
             for(ServerCommand command : eventPackage.getCommands()){
                 commandMap.putAll(command.getCommandMap());
+                commandToModuleMap.put(command.getKeyword().toLowerCase(), eventPackage.getName().toLowerCase());
             }
             silentEvents.addAll(Arrays.asList(eventPackage.getSilentEvents()));
             for(Event event : eventPackage.getEvents()){
@@ -67,7 +66,13 @@ public class MessageProcessing extends ListenerAdapter {
         }
     }
 
+    private final WylxStats stats;
+
     private final Pattern mentionPattern = Message.MentionType.USER.getPattern();
+
+    public MessageProcessing(DatabaseManager db) {
+        stats = new WylxStats(db.getCmdStats());
+    }
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
@@ -75,7 +80,6 @@ public class MessageProcessing extends ListenerAdapter {
 
         Wylx wylx = Wylx.getInstance();
         DatabaseManager dbManager = wylx.getDb();
-        WylxStats wylxStats = dbManager.getGlobal().getSetting(GlobalIdentifiers.BotStats);
         String memberID = event.getAuthor().getId();
 
         //Ignore messages from the bot and in DMs
@@ -86,9 +90,9 @@ public class MessageProcessing extends ListenerAdapter {
         }
 
         String guildID = event.getGuild().getId();
-        DiscordServer db = dbManager.getServer(guildID);
+        DBServer serverEntry = dbManager.getServer(guildID);
         ServerEventManager eventManager = ServerEventManager.getServerEventManager(guildID);
-        String serverPrefix = getPrefix(db, wylx);
+        String serverPrefix = getPrefix(serverEntry.prefix, wylx);
         String msgStr = event.getMessage().getContentRaw();
         String msgPrefix = null;
 
@@ -115,14 +119,14 @@ public class MessageProcessing extends ListenerAdapter {
                     CommandContext ctx = new CommandContext(
                         event, args, msgStr, serverPrefix, guildID, memberID,
                         musicPlayerManager.getGuildManager(guildID),
-                        db
+                        serverEntry, stats
                     );
                     logger.debug("Command ({}) Called With {} Args", args[0], args.length);
                     command.runCommand(ctx);
                 } else {
                     event.getMessage().reply("You don't have permission to use this command!").queue();
                 }
-                wylxStats.updateAverageCommand(startTime);
+                stats.updateAverageCommand(startTime);
                 return;
             }
         }
@@ -130,20 +134,24 @@ public class MessageProcessing extends ListenerAdapter {
         for(SilentEvent silentEvent : silentEvents){
             if(eventManager.checkEvent(silentEvent) && silentEvent.check(event, serverPrefix)){
                 silentEvent.runEvent(event, serverPrefix);
-                wylxStats.updateAverageSilentEvent(startTime);
+                stats.updateAverageSilentEvent(startTime);
                 return;
             }
         }
 
-        wylxStats.updateAverageNoOp(startTime);
+        stats.updateAverageNoOp(startTime);
     }
 
-    private String getPrefix(DiscordServer server, Wylx wylx) {
+    private String getPrefix(String prefix, Wylx wylx) {
         WylxEnvConfig config = wylx.getWylxConfig();
         if (config.release) {
-            return server.getSetting(ServerIdentifiers.Prefix);
+            return prefix;
         }
 
         return config.betaPrefix;
+    }
+
+    public void close() {
+        stats.close();
     }
 }

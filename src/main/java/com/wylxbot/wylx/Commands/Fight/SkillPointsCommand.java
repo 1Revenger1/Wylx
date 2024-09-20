@@ -5,8 +5,6 @@ import com.wylxbot.wylx.Core.Events.Commands.CommandContext;
 import com.wylxbot.wylx.Core.Events.Commands.ServerCommand;
 import com.wylxbot.wylx.Core.Util.Helper;
 import com.wylxbot.wylx.Database.DatabaseManager;
-import com.wylxbot.wylx.Database.DbElements.DiscordUser;
-import com.wylxbot.wylx.Database.DbElements.UserIdentifiers;
 import com.wylxbot.wylx.Wylx;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -82,9 +80,7 @@ public class SkillPointsCommand extends ServerCommand {
     }
 
     private MessageEmbed buildEmbedPersonal(Guild guild, Member member){
-        DatabaseManager db = Wylx.getInstance().getDb();
-        DiscordUser dbUser = db.getUser(member.getId());
-        FightUserStats stats = dbUser.getSetting(UserIdentifiers.FightStats);
+        FightUserStats stats = FightUserStats.getUserStats(member);
         EmbedBuilder embed = new EmbedBuilder();
 
         int exp = FightUtil.calcEXPForLevel(stats.getLvl());
@@ -114,13 +110,10 @@ public class SkillPointsCommand extends ServerCommand {
     }
 
     private MessageEmbed buildEmbedOther(Guild guild, Member member){
-        DatabaseManager db = Wylx.getInstance().getDb();
-        DiscordUser dbUser = db.getUser(member.getId());
-        FightUserStats stats = dbUser.getSetting(UserIdentifiers.FightStats);
+        FightUserStats stats = FightUserStats.getUserStats(member);
         EmbedBuilder embed = new EmbedBuilder();
 
         int exp = FightUtil.calcEXPForLevel(stats.getLvl());
-        int pointsToSpend = stats.getLvl() - stats.getUsedPoints();
 
         embed.setColor(guild.getSelfMember().getColor());
         embed.setAuthor(member.getEffectiveName() + "'s stats in " + guild.getName(),

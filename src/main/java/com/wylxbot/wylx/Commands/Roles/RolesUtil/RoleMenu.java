@@ -1,7 +1,8 @@
 package com.wylxbot.wylx.Commands.Roles.RolesUtil;
 
+import com.wylxbot.wylx.Database.Pojos.DBRoleMenu;
+import com.wylxbot.wylx.Database.Pojos.DBRoleMenuRole;
 import com.wylxbot.wylx.Wylx;
-import com.wylxbot.wylx.Database.DbElements.ServerIdentifiers;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
@@ -12,6 +13,7 @@ import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,12 +28,16 @@ public class RoleMenu {
 
     private final ArrayList<RoleReaction> reactions = new ArrayList<>();
 
+    public RoleMenu(DBRoleMenu dbEntry) {
+        this(dbEntry.title, dbEntry._id, dbEntry.channelId, dbEntry.guildId, dbEntry.roles);
+    }
+
     public RoleMenu(String messageID, String channelID, String guildID) throws IllegalArgumentException, ErrorResponseException {
         this("Role Selection", messageID, channelID, guildID, null);
         updateMessage();
     }
 
-    public RoleMenu(String title, String messageID, String channelID, String guildID, Map<String, String> roles) throws IllegalArgumentException, ErrorResponseException {
+    private RoleMenu(String title, String messageID, String channelID, String guildID, Map<String, DBRoleMenuRole> roles) throws IllegalArgumentException, ErrorResponseException {
         this.title = title;
         this.messageID = messageID;
         this.channelID = channelID;
@@ -51,9 +57,9 @@ public class RoleMenu {
 
         boolean updateMenu = false;
 
-        for (Map.Entry<String, String> entry : roles.entrySet()) {
+        for (var entry : roles.entrySet()) {
             String roleID = entry.getKey();
-            String emojiInput = entry.getValue();
+            DBRoleMenuRole emojiInput = entry.getValue();
 
             Role role = jda.getRoleById(roleID);
             // Remove if invalid
@@ -63,8 +69,8 @@ public class RoleMenu {
             }
 
             EmojiUnion emoji;
-            if (emojiInput.matches("[0-9]+")) {
-                RichCustomEmoji customEmoji = jda.getEmojiById(emojiInput);
+            if (!emojiInput.isUnicode()) {
+                RichCustomEmoji customEmoji = jda.getEmojiById(emojiInput.emojiStr());
                 if (customEmoji == null) {
                     updateMenu = true;
                     continue;
@@ -72,7 +78,7 @@ public class RoleMenu {
                 emoji = (EmojiUnion) customEmoji;
             } else {
                 // Unicode
-                emoji = Emoji.fromFormatted(emojiInput);
+                emoji = Emoji.fromFormatted(emojiInput.emojiStr());
             }
 
             reactions.add(new RoleReaction(role, emoji));
@@ -96,7 +102,7 @@ public class RoleMenu {
         StringBuilder string = new StringBuilder("React to get a role!\n\n");
 
         if (reactions.size() == 0) {
-            String prefix = Wylx.getInstance().getDb().getServer(guildID).getSetting(ServerIdentifiers.Prefix);
+            String prefix = Wylx.getInstance().getDb().getServer(guildID).prefix;
             string.append("This list is currently empty. To add roles, please use\n`");
             string.append(prefix);
             string.append("modifyRoleMenu ");
@@ -117,20 +123,12 @@ public class RoleMenu {
         return builder.build();
     }
 
-    public String getTitle() {
-        return title;
-    }
-
     public String getGuildID() {
         return guildID;
     }
 
     public String getMessageID() {
         return messageID;
-    }
-
-    public String getChannelID() {
-        return channelID;
     }
 
     public List<RoleReaction> getReactions() {
@@ -202,5 +200,22 @@ public class RoleMenu {
             }
         }
         return null;
+    }
+
+    public DBRoleMenu getDBEntry() {
+        Map<String, DBRoleMenuRole> roles = new HashMap<>();
+        reactions.forEach(role -> {
+            boolean isUnicode = role.emoji().getType() == Emoji.Type.UNICODE;
+            String id = isUnicode ? role.emoji().getName() : role.emoji().asCustom().getId();
+            roles.put(role.role().getId(), new DBRoleMenuRole(isUnicode, id));
+        });
+
+        DBRoleMenu ret = new DBRoleMenu();
+        ret._id = messageID;
+        ret.channelId = channelID;
+        ret.guildId = guildID;
+        ret.title = title;
+        ret.roles = roles;
+        return ret;
     }
 }

@@ -1,6 +1,5 @@
 package com.wylxbot.wylx.Commands.DND.Util;
 
-import com.wylxbot.wylx.Database.DbElements.GlobalIdentifiers;
 import com.wylxbot.wylx.Wylx;
 import org.apache.commons.lang3.StringUtils;
 
@@ -20,25 +19,25 @@ public class SpellBuilder {
 
     private SpellBuilder() {
         // Split the csv into lines, should be one spell per line
-        String[] csvLines = ((String) Wylx.getInstance().getDb().getGlobal().getSetting(GlobalIdentifiers.DND_Spells_CSV)).split("\n");
-        // Add each spell to the spell map
-        for(String line : csvLines){
-            // 0: Name, 1: Source, 2: Level, 3: School, 4: Casting Time, 5: Range, 6: Components, 7: Duration, 8: Description, 9: Spell List(s)
-            String[] lineElements = line.split(",");
-
-            String name = capitalizeWords(lineElements[0]);
-            String source = capitalizeWords(lineElements[1]);
-            int level = Integer.parseInt(lineElements[2]);
-            String school = StringUtils.capitalize(lineElements[3]);
-            String castingTime = StringUtils.capitalize(lineElements[4]);
-            String range = lineElements[5];
-            String components = capitalizeWords(lineElements[6]);
-            String duration = StringUtils.capitalize(lineElements[7]);
-            String[] classSpellLists = capitalizeWords(lineElements[8]).split(" ");
-            String description = lineElements[9].replaceAll(";\\|;", ",");
-
-            spellMap.put(name.toLowerCase().replaceAll(" ua", ""), new Spell(name, source, level, school, castingTime, range, components, duration, description, classSpellLists));
-        }
+//        String[] csvLines = ((String) Wylx.getInstance().getDb().getCmdStats().getSetting(GlobalIdentifiers.DND_Spells_CSV)).split("\n");
+//        // Add each spell to the spell map
+//        for(String line : csvLines){
+//            // 0: Name, 1: Source, 2: Level, 3: School, 4: Casting Time, 5: Range, 6: Components, 7: Duration, 8: Description, 9: Spell List(s)
+//            String[] lineElements = line.split(",");
+//
+//            String name = capitalizeWords(lineElements[0]);
+//            String source = capitalizeWords(lineElements[1]);
+//            int level = Integer.parseInt(lineElements[2]);
+//            String school = StringUtils.capitalize(lineElements[3]);
+//            String castingTime = StringUtils.capitalize(lineElements[4]);
+//            String range = lineElements[5];
+//            String components = capitalizeWords(lineElements[6]);
+//            String duration = StringUtils.capitalize(lineElements[7]);
+//            String[] classSpellLists = capitalizeWords(lineElements[8]).split(" ");
+//            String description = lineElements[9].replaceAll(";\\|;", ",");
+//
+//            spellMap.put(name.toLowerCase().replaceAll(" ua", ""), new Spell(name, source, level, school, castingTime, range, components, duration, description, classSpellLists));
+//        }
     }
 
     public String capitalizeSpellName(String input){

@@ -1,19 +1,16 @@
 package com.wylxbot.wylx.Core.Processing;
 
 import com.wylxbot.wylx.Commands.Roles.RolesUtil.RoleMenu;
+import com.wylxbot.wylx.Database.Pojos.DBRoleMenu;
 import com.wylxbot.wylx.Wylx;
-import com.wylxbot.wylx.Database.DbElements.DiscordRoleMenu;
-import com.wylxbot.wylx.Database.DbElements.RoleMenuIdentifiers;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
-import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
 import net.dv8tion.jda.api.exceptions.ErrorHandler;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
-import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.jetbrains.annotations.NotNull;
@@ -102,9 +99,10 @@ public class ReactionProcessing extends ListenerAdapter {
     }
 
     private void removeRole(@NotNull GenericMessageReactionEvent event, Role roleToRemove) {
-        DiscordRoleMenu roleDb = Wylx.getInstance().getDb().getRoleMenu(event.getMessageId());
-        RoleMenu menu = roleDb.getSettingOrNull(RoleMenuIdentifiers.ROLE_MENU);
+        DBRoleMenu roleDb = Wylx.getInstance().getDb().getRoleMenu(event.getMessageId());
+        RoleMenu menu = new RoleMenu(roleDb);
         menu.removeReaction(roleToRemove.getName());
+        Wylx.getInstance().getDb().setRoleMenu(event.getMessageId(), menu.getDBEntry());
     }
 
     private Role checkReactionForMenu(@NotNull GenericMessageReactionEvent event) {
@@ -116,13 +114,13 @@ public class ReactionProcessing extends ListenerAdapter {
         }
 
         // Check for menu
-        DiscordRoleMenu roleDb = Wylx.getInstance().getDb().getRoleMenu(event.getMessageId());
-        RoleMenu menu = roleDb.getSettingOrNull(RoleMenuIdentifiers.ROLE_MENU);
-        if (menu == null) {
+        DBRoleMenu roleDb = Wylx.getInstance().getDb().getRoleMenu(event.getMessageId());
+        if (roleDb == null) {
             return null;
         }
 
         EmojiUnion emoji = event.getEmoji();
+        RoleMenu menu = new RoleMenu(roleDb);
         return menu.getReactionFromEmote(emoji);
     }
 }
