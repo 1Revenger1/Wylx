@@ -6,8 +6,6 @@ import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 public class EnvUtils {
-
-
     // From https://stackoverflow.com/a/52581380
     public static Boolean isRunningInsideDocker() {
         try (Stream<String> stream = Files.lines(Paths.get("/proc/1/cgroup"))) {
