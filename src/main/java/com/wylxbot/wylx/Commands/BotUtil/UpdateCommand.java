@@ -32,11 +32,6 @@ public class UpdateCommand extends ThreadedCommand {
         MessageReceivedEvent event = ctx.event();
         String[] args = ctx.args();
 
-        if (EnvUtils.isRunningInsideDocker()) {
-            event.getChannel().sendMessage("Unable to update inside docker!").queue();
-            return;
-        }
-
         if (args.length == 2 && Wylx.getInstance().getWylxConfig().release) {
             event.getChannel().sendMessage("Unable to use different branch on RELEASE").queue();
             return;
