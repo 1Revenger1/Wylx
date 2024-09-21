@@ -28,8 +28,8 @@ dependencies {
     implementation("io.github.cdimascio:dotenv-kotlin:6.4.2")
     implementation("net.dv8tion:JDA:5.1.0")
     implementation("ch.qos.logback:logback-classic:1.5.8")
-    implementation("dev.arbjerg:lavaplayer:2.2.1") // https://github.com/lavalink-devs/lavaplayer
-    implementation("dev.lavalink.youtube:v2:1.7.2")
+    implementation("dev.arbjerg:lavaplayer:2.2.2") // https://github.com/lavalink-devs/lavaplayer
+    implementation("dev.lavalink.youtube:v2:1.8.0")
     implementation("org.mongodb:mongodb-driver-sync:5.1.4")
     implementation ("org.scilab.forge:jlatexmath:1.0.7")
 }
