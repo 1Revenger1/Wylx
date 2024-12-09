@@ -2,6 +2,7 @@ package com.wylxbot.wylx.Commands.BotUtil;
 
 import com.wylxbot.wylx.Core.Events.Commands.CommandContext;
 import com.wylxbot.wylx.Core.Events.Commands.ThreadedCommand;
+import com.wylxbot.wylx.Core.Util.EnvUtils;
 import com.wylxbot.wylx.Wylx;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.utils.FileUpload;

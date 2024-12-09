@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'org.wylx'
-version '1.0-SNAPSHOT'
+version = System.getenv("GIT_COMMIT") ?: "git describe --dirty --always --exclude '*'".execute().text.trim()
 
 repositories {
     mavenCentral()
@@ -24,13 +24,13 @@ repositories {
 }
 
 dependencies {
-    implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
-    implementation("net.dv8tion:JDA:5.0.0-beta.23")
-    implementation("ch.qos.logback:logback-classic:1.4.5")
-    implementation("dev.arbjerg:lavaplayer:2.2.1") // https://github.com/lavalink-devs/lavaplayer
-    implementation("dev.lavalink.youtube:v2:1.7.2")
-    implementation("org.mongodb:mongodb-driver-sync:4.8.2")
+    implementation("org.apache.commons:commons-text:1.12.0")
+    implementation("io.github.cdimascio:dotenv-kotlin:6.4.2")
+    implementation("net.dv8tion:JDA:5.1.0")
+    implementation("ch.qos.logback:logback-classic:1.5.8")
+    implementation("dev.arbjerg:lavaplayer:2.2.2") // https://github.com/lavalink-devs/lavaplayer
+    implementation("dev.lavalink.youtube:v2:1.8.0")
+    implementation("org.mongodb:mongodb-driver-sync:5.1.4")
     implementation ("org.scilab.forge:jlatexmath:1.0.7")
 }
 
@@ -42,4 +42,29 @@ java {
 
 application {
     mainClassName="com.wylxbot.wylx.Wylx"
+}
+
+// Remove version from output jar name
+tasks.jar {
+    archiveFileName.set("${project.name}.jar")
+}
+
+tasks.distZip {
+    archiveFileName.set("${project.name}.zip")
+}
+
+// Create version.properties with git hash
+task createProperties(dependsOn: processResources) {
+  doLast {
+    new File("$buildDir/resources/main/version.properties").withWriter { w ->
+        Properties p = new Properties()
+        p['version'] = version.toString()
+        p['build-date'] = new Date().format("EEE MMM dd HH':'mm':'ss zzz yyyy")
+        p.store w, null
+    }
+  }
+}
+
+classes {
+    dependsOn createProperties
 }
